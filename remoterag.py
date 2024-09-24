@@ -11,19 +11,20 @@ from langchain.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 import os
 
+# Streamlit app title
 st.title("RAG System with Local LLM")
 
+# User input for prompt
 prompt = st.text_input("Prompt:", value="", key="prompt")
 
-# documents = [
-#     "Big Companies Find a Way to Identify A.I. Data They Can Trust - The New York Times.pdf"
-# ]
-
 # Path to the folder containing your documents
-folder_path = '/path/to/your/folder'
+folder_path = './docs'
 
 # Automatically get a list of all files in the folder
-documents = [file for file in os.listdir(folder_path) if file.endswith('.pdf')]
+documents = [os.path.join(folder_path, file)
+             for file in os.listdir(folder_path) if file.endswith('.pdf')]
+st.write("Loaded Documents:")
+st.write(documents)
 
 
 @st.cache_data
@@ -34,7 +35,7 @@ def load_documents(document_paths):
         docs.extend(loader.load())
     return docs
 
-# Loading documents and casheing data in faiss index
+# Loading documents and caching data in faiss index
 
 
 @st.cache_data
@@ -59,12 +60,13 @@ if prompt:
     response = ""
     llm = Ollama(model="llama3")
 
-    # Use updated invoke method instead of get_relevant_documents
-    context = retriever.invoke(prompt)
+    # Correct method to retrieve relevant documents
+    context = retriever.get_relevant_documents(prompt)
     combined_context = " ".join([doc.page_content for doc in context])
     inputs = f"Context: {combined_context}\n\nQuestion: {prompt}\n\nAnswer:"
+
+    # Invoke the LLM to generate a response
     response = llm.invoke(inputs)
 
+    # Display the response
     st.markdown(response)
-
-# $ streamlit run remoterag.py
