@@ -8,18 +8,22 @@ from langchain.callbacks.streaming_stdout_final_only import FinalStreamingStdOut
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+import os
 
-# Streamlit app title
 st.title("RAG System with Local LLM")
 
-# User input section
-search_internet = st.checkbox("Check internet?", value=False, key="internet")
 prompt = st.text_input("Prompt:", value="", key="prompt")
 
-# Document retrieval setup
-# Add paths to your documents
-documents = ["articles.pdf"]
+# documents = [
+#     "Big Companies Find a Way to Identify A.I. Data They Can Trust - The New York Times.pdf"
+# ]
+
+# Path to the folder containing your documents
+folder_path = '/path/to/your/folder'
+
+# Automatically get a list of all files in the folder
+documents = [file for file in os.listdir(folder_path) if file.endswith('.pdf')]
 
 
 @st.cache_data
@@ -29,6 +33,8 @@ def load_documents(document_paths):
         loader = PyPDFLoader(path)
         docs.extend(loader.load())
     return docs
+
+# Loading documents and casheing data in faiss index
 
 
 @st.cache_data
@@ -42,7 +48,7 @@ def create_faiss_index(_docs):
 
 
 # Load and index documents
-docs = load_documents(documents)
+docs = load_documents(document_paths=documents)
 vector_store = create_faiss_index(docs)
 
 # Set up retriever
@@ -51,29 +57,14 @@ retriever = vector_store.as_retriever()
 # If prompt is not empty, process the input
 if prompt:
     response = ""
-    # if not search_internet:
-    # Local LLM only
     llm = Ollama(model="llama3")
-    context = retriever.get_relevant_documents(prompt)
+
+    # Use updated invoke method instead of get_relevant_documents
+    context = retriever.invoke(prompt)
     combined_context = " ".join([doc.page_content for doc in context])
     inputs = f"Context: {combined_context}\n\nQuestion: {prompt}\n\nAnswer:"
     response = llm.invoke(inputs)
-    # else:
-    #     # LLM with internet search
-    #     llm = Ollama(
-    #         model="llama3",
-    #         callback_manager=CallbackManager(
-    #             [FinalStreamingStdOutCallbackHandler()])
-    #     )
-    #     agent = initialize_agent(
-    #         load_tools(["ddg-search"]), llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True, handle_parsing_errors=True
-    #     )
-    #     response = agent.run(prompt, callbacks=[
-    #                          StreamlitCallbackHandler(st.container())])
-    # To get out of a spiral Q&A: refresh the browser page
 
-    # Display the response in Streamlit
     st.markdown(response)
 
-# To run this script, save it as `app.py` and run the following command in your terminal:
-# $ streamlit run app.py
+# $ streamlit run remoterag.py
