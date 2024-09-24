@@ -1,5 +1,0 @@
-streamlit
-langchain_community
-langchain
-faiss-cpu
-pypdf
